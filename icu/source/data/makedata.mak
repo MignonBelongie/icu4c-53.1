@@ -14,7 +14,7 @@ U_ICUDATA_NAME=icudt53
 ##############################################################################
 U_ICUDATA_ENDIAN_SUFFIX=l
 UNICODE_VERSION=6.3
-ICU_LIB_TARGET=$(DLL_OUTPUT)\$(U_ICUDATA_NAME).dll
+ICU_LIB_DLL_TARGET=$(DLL_OUTPUT)\$(U_ICUDATA_NAME).dll
 
 #  ICUMAKE
 #     Must be provided by whoever runs this makefile.
@@ -119,8 +119,10 @@ ICUDATA=$(ICUP)\source\data
 #
 !IF "$(CFG)" == "x64\Release" || "$(CFG)" == "x64\Debug"
 DLL_OUTPUT=$(ICUP)\bin64
+STATIC_LIB_OUTPUT=$(ICUP)\lib64
 !ELSE
 DLL_OUTPUT=$(ICUP)\bin
+STATIC_LIB_OUTPUT=$(ICUP)\lib
 !ENDIF
 
 #
@@ -153,13 +155,6 @@ ICUPBIN=$(ICUP)\bin64
 !ELSE
 PATH = $(ICUP)\bin;$(PATH)
 ICUPBIN=$(ICUP)\bin
-!ENDIF
-
-
-# This variable can be overridden to "-m static" by the project settings,
-# if you want a static data library.
-!IF "$(ICU_PACKAGE_MODE)"==""
-ICU_PACKAGE_MODE=-m dll
 !ENDIF
 
 # If this archive exists, build from that
@@ -467,7 +462,8 @@ SPREP_FILES = $(SPREP_SOURCE:.txt=.spp)
 
 # Common defines for both ways of building ICU's data library.
 COMMON_ICUDATA_DEPENDENCIES="$(ICUPBIN)\pkgdata.exe" "$(ICUTMP)\icudata.res" "$(ICUP)\source\stubdata\stubdatabuilt.txt"
-COMMON_ICUDATA_ARGUMENTS=-f -e $(U_ICUDATA_NAME) -v $(ICU_PACKAGE_MODE) -c -p $(ICUPKG) -T "$(ICUTMP)" -L $(U_ICUDATA_NAME) -d "$(ICUBLD_PKG)" -s .
+COMMON_ICUDATA_ARGUMENTS=-f -e $(U_ICUDATA_NAME) -v -m dll -c -p $(ICUPKG) -T "$(ICUTMP)" -L $(U_ICUDATA_NAME) -d "$(ICUBLD_PKG)" -s .
+COMMON_ICUDATA_ARGUMENTS_S=-f -e $(U_ICUDATA_NAME) -v -m static -c -p $(ICUPKG) -T "$(ICUTMP)" -L $(U_ICUDATA_NAME) -d "$(ICUBLD_PKG)" -s .
 
 #############################################################################
 #
@@ -478,7 +474,7 @@ COMMON_ICUDATA_ARGUMENTS=-f -e $(U_ICUDATA_NAME) -v $(ICU_PACKAGE_MODE) -c -p $(
 #				Building the common dll in $(ICUBLD_PKG) unconditionally copies it to $(DLL_OUTPUT) too.
 #
 #############################################################################
-ALL : GODATA "$(ICU_LIB_TARGET)" "$(TESTDATAOUT)\testdata.dat"
+ALL : GODATA ICU_LIB_DLL_AND_STATIC "$(TESTDATAOUT)\testdata.dat"
 	@echo All targets are up to date
 
 # The core Unicode properties files (uprops.icu, ucase.icu, ubidi.icu)
@@ -592,17 +588,20 @@ icu4j-data-install :
 #  from data build. See Jitterbug 4497. (makedata.mak revision 1.117)
 #
 !IFDEF ICUDATA_SOURCE_ARCHIVE
-"$(ICU_LIB_TARGET)" : $(COMMON_ICUDATA_DEPENDENCIES) "$(ICUDATA_SOURCE_ARCHIVE)"
+ICU_LIB_DLL_AND_STATIC : $(COMMON_ICUDATA_DEPENDENCIES) "$(ICUDATA_SOURCE_ARCHIVE)"
 	@echo Building icu data from $(ICUDATA_SOURCE_ARCHIVE)
 	cd "$(ICUBLD_PKG)"
 	"$(ICUPBIN)\icupkg" -x * --list "$(ICUDATA_SOURCE_ARCHIVE)" > "$(ICUTMP)\icudata.lst"
 	"$(ICUPBIN)\pkgdata" $(COMMON_ICUDATA_ARGUMENTS) "$(ICUTMP)\icudata.lst"
 	copy "$(U_ICUDATA_NAME).dll" "$(DLL_OUTPUT)"
 	-@erase "$(U_ICUDATA_NAME).dll"
+	"$(ICUPBIN)\pkgdata" $(COMMON_ICUDATA_ARGUMENTS_S) "$(ICUTMP)\icudata.lst"
+	copy "s$(U_ICUDATA_NAME).lib" "$(STATIC_LIB_OUTPUT)"
+	-@erase "s$(U_ICUDATA_NAME).lib"
 	copy "$(ICUTMP)\$(ICUPKG).dat" "$(ICUOUT)\$(U_ICUDATA_NAME)$(U_ICUDATA_ENDIAN_SUFFIX).dat"
 	-@erase "$(ICUTMP)\$(ICUPKG).dat"
 !ELSE
-"$(ICU_LIB_TARGET)" : $(COMMON_ICUDATA_DEPENDENCIES) $(CNV_FILES) $(CNV_FILES_SPECIAL) "$(ICUBLD_PKG)\unames.icu" "$(ICUBLD_PKG)\cnvalias.icu" "$(ICUBLD_PKG)\nfc.nrm" "$(ICUBLD_PKG)\nfkc.nrm" "$(ICUBLD_PKG)\nfkc_cf.nrm" "$(ICUBLD_PKG)\uts46.nrm" "$(ICUBLD_PKG)\$(ICUCOL)\ucadata.icu"  $(CURR_RES_FILES) $(LANG_RES_FILES) $(REGION_RES_FILES) $(ZONE_RES_FILES) $(BRK_FILES) $(BRK_DICT_FILES) $(BRK_RES_FILES) $(ALL_RES) $(COL_COL_FILES) $(RBNF_RES_FILES) $(TRANSLIT_RES_FILES) $(SPREP_FILES) "$(ICUBLD_PKG)\confusables.cfu"
+"$(ICU_LIB_DLL_TARGET)" : $(COMMON_ICUDATA_DEPENDENCIES) $(CNV_FILES) $(CNV_FILES_SPECIAL) "$(ICUBLD_PKG)\unames.icu" "$(ICUBLD_PKG)\cnvalias.icu" "$(ICUBLD_PKG)\nfc.nrm" "$(ICUBLD_PKG)\nfkc.nrm" "$(ICUBLD_PKG)\nfkc_cf.nrm" "$(ICUBLD_PKG)\uts46.nrm" "$(ICUBLD_PKG)\$(ICUCOL)\ucadata.icu"  $(CURR_RES_FILES) $(LANG_RES_FILES) $(REGION_RES_FILES) $(ZONE_RES_FILES) $(BRK_FILES) $(BRK_DICT_FILES) $(BRK_RES_FILES) $(ALL_RES) $(COL_COL_FILES) $(RBNF_RES_FILES) $(TRANSLIT_RES_FILES) $(SPREP_FILES) "$(ICUBLD_PKG)\confusables.cfu"
 	@echo Building icu data
 	cd "$(ICUBLD_PKG)"
 	"$(ICUPBIN)\pkgdata" $(COMMON_ICUDATA_ARGUMENTS) <<"$(ICUTMP)\icudata.lst"
@@ -643,8 +642,8 @@ $(BRK_RES_FILES:.res =.res
 $(SPREP_FILES:.spp=.spp
 )
 <<KEEP
-	-@erase "$(ICU_LIB_TARGET)"
-	copy "$(U_ICUDATA_NAME).dll" "$(ICU_LIB_TARGET)"
+	-@erase "$(ICU_LIB_DLL_TARGET)"
+	copy "$(U_ICUDATA_NAME).dll" "$(ICU_LIB_DLL_TARGET)"
 	-@erase "$(U_ICUDATA_NAME).dll"
 	copy "$(ICUTMP)\$(ICUPKG).dat" "$(ICUOUT)\$(U_ICUDATA_NAME)$(U_ICUDATA_ENDIAN_SUFFIX).dat"
 	-@erase "$(ICUTMP)\$(ICUPKG).dat"
